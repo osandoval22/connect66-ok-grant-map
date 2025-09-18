@@ -52,4 +52,187 @@
 <body>
   <header class="brand">
     <div class="brand-inner">
-      <im
+      <img class="logo" src="./assets/connect66-logo.svg" alt="Connect66" onerror="this.style.display='none'">
+      <div class="titles">
+        <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
+        <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
+        <div class="pills">
+          <span class="pill"><span id="siteCount">44</span> sites</span>
+          <span class="pill">statewide coverage</span>
+          <span class="pill">shovel-ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap"><div id="map"></div></div>
+
+  <div class="hud">
+    <div class="panel">
+      <div class="row">
+        <label><input type="checkbox" id="measureToggle"> Measure distance</label>
+        <button class="btn" id="resetMeasure">Reset</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="popToggle" checked> Color by population (if available)</label>
+      </div>
+      <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
+      <div class="row">
+        <label><input type="checkbox" id="routeToggle"> Show route line</label>
+        <label><input type="checkbox" id="segToggle"> Label distances</label>
+        <select id="orderSelect" class="select">
+          <option value="west" selected>Order: West → East</option>
+          <option value="east">Order: East → West</option>
+          <option value="file">Order: As in file</option>
+        </select>
+      </div>
+    </div>
+    <div class="status" id="status">Loading…</div>
+  </div>
+
+  <div class="legend" id="legend" style="display:none;">
+    <div><strong>Population</strong></div>
+    <div class="bar"></div>
+    <div class="labels"><span id="minPop">min</span><span id="maxPop">max</span></div>
+  </div>
+
+  <script>
+    // ------- helpers -------
+    const R=6371, toRad=d=>d*Math.PI/180;
+    const haversine=(a,b)=>{const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(s))};
+    const popColor=(min,max,val)=>{if(!Number.isFinite(val)||max===min)return '#1e3a8a';const t=Math.max(0,Math.min(1,(val-min)/(max-min)));const h=225-3*t,s=90+5*t,l=80-50*t;return `hsl(${h}, ${s}%, ${l}%)`};
+
+    const statusEl=document.getElementById('status');
+    const siteCountEl=document.getElementById('siteCount');
+
+    function setStatus(msg){ statusEl.textContent = msg; }
+
+    // ------- map -------
+    const map=L.map('map').setView([35.5,-97.5],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);
+
+    // UI
+    const measureToggle=document.getElementById('measureToggle');
+    const resetBtn=document.getElementById('resetMeasure');
+    const popToggle=document.getElementById('popToggle');
+    const routeToggle=document.getElementById('routeToggle');
+    const segToggle=document.getElementById('segToggle');
+    const orderSelect=document.getElementById('orderSelect');
+
+    const legendEl=document.getElementById('legend');
+    const minPopEl=document.getElementById('minPop');
+    const maxPopEl=document.getElementById('maxPop');
+
+    let markers=[], halos=[], points=[], popMin=null, popMax=null;
+    let measureSel=[], measureLine=null;
+
+    // Route visuals
+    let routeLine=null, routeLabels=[];
+
+    function clearRoute(){
+      if(routeLine){ map.removeLayer(routeLine); routeLine=null; }
+      routeLabels.forEach(l=>map.removeLayer(l)); routeLabels=[];
+    }
+
+    function renderRoute(){
+      clearRoute();
+      if(!routeToggle.checked || points.length<2) return;
+
+      // Determine order
+      let ordered = points.slice();
+      const ord = orderSelect.value;
+      if(ord==='west'){ ordered.sort((a,b)=>a.lon-b.lon); }
+      else if(ord==='east'){ ordered.sort((a,b)=>b.lon-a.lon); }
+      // else 'file' keeps original loaded order
+
+      // Draw line
+      const latlngs = ordered.map(p=>[p.lat,p.lon]);
+      routeLine = L.polyline(latlngs, { color: '#f59e0b', weight: 4, opacity: 0.9 }).addTo(map);
+
+      // Segment labels + total
+      let totalKm = 0;
+      if(segToggle.checked){
+        for(let i=0;i<ordered.length-1;i++){
+          const a=ordered[i], b=ordered[i+1];
+          const km=haversine(a,b); totalKm+=km;
+          const mi=km*0.621371;
+          const mid=[(a.lat+b.lat)/2,(a.lon+b.lon)/2];
+          const label=L.marker(mid,{
+            icon: L.divIcon({ className:'seglabel', html:`${mi.toFixed(1)} mi` })
+          }).addTo(map);
+          routeLabels.push(label);
+        }
+      }else{
+        for(let i=0;i<ordered.length-1;i++){
+          totalKm+=haversine(ordered[i], ordered[i+1]);
+        }
+      }
+      const totalMi = totalKm*0.621371;
+      setStatus(`Loaded ${points.length} locations • Route length ~ ${totalMi.toFixed(1)} miles`);
+    }
+
+    function drawMeasurement(){
+      if(measureLine){ map.removeLayer(measureLine); measureLine=null; }
+      const[a,b]=measureSel; const km=haversine(a,b), mi=km*0.621371;
+      measureLine=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#f59e0b',weight:4}).addTo(map);
+      map.fitBounds(measureLine.getBounds(),{padding:[50,50]});
+      setStatus(`Distance: ${mi.toFixed(1)} miles (${km.toFixed(1)} km) — ${a.city} → ${b.city}`);
+      measureSel=[];
+    }
+    resetBtn.addEventListener('click',()=>{measureSel=[]; if(measureLine){map.removeLayer(measureLine);measureLine=null;} setStatus('Ready.');});
+    popToggle.addEventListener('change', ()=>{ renderMarkers(); renderRoute(); });
+    routeToggle.addEventListener('change', renderRoute);
+    segToggle.addEventListener('change', renderRoute);
+    orderSelect.addEventListener('change', renderRoute);
+
+    function renderMarkers(){
+      markers.forEach(m=>map.removeLayer(m)); markers=[];
+      halos.forEach(h=>map.removeLayer(h)); halos=[];
+      const usePop=popToggle.checked&&Number.isFinite(popMin)&&Number.isFinite(popMax);
+      const bounds=[];
+      points.forEach(p=>{
+        const m=L.marker([p.lat,p.lon]).addTo(map)
+          .bindPopup(`<strong>${p.city}, ${p.state}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}${Number.isFinite(p.population)?`<br>Population: ${p.population.toLocaleString()}`:''}`);
+        m.on('click',()=>{ if(!measureToggle.checked) return; measureSel.push(p); if(measureSel.length===2) drawMeasurement(); else setStatus(`Selected: ${p.city}. Pick another…`); });
+        markers.push(m); bounds.push([p.lat,p.lon]);
+        if(usePop&&Number.isFinite(p.population)){
+          halos.push(L.circleMarker([p.lat,p.lon],{radius:10,stroke:false,fillOpacity:.7,fillColor:popColor(popMin,popMax,p.population)}).addTo(map));
+        }
+      });
+      if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+      // If route is on, redraw it after marker refresh (keeps labels above line)
+      renderRoute();
+    }
+
+    async function loadPopulation(){
+      try{
+        const r=await fetch('./assets/population.json',{cache:'no-cache'});
+        if(!r.ok) return {};
+        return await r.json();
+      }catch{ return {}; }
+    }
+
+    (async()=>{
+      const popData=await loadPopulation();
+      const rows=await fetch('./assets/cities.baked.json',{cache:'no-cache'}).then(r=>{ if(!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); });
+
+      points=rows.map(row=>{
+        const city=row.city??row.City??row.name??row.Name??'', state=row.state??row.State??'';
+        const lat=Number(row.lat??row.latitude), lon=Number(row.lon??row.lng??row.longitude);
+        let population;
+        if(popData && typeof popData==='object' && !Array.isArray(popData)){
+          const key=`${city}, ${state}`; if(key in popData) population=Number(popData[key]);
+        }
+        return {city,state,lat,lon,population};
+      }).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+
+      const pops=points.map(p=>p.population).filter(n=>Number.isFinite(n));
+      if(pops.length){ popMin=Math.min(...pops); popMax=Math.max(...pops); }
+
+      if(siteCountEl) siteCountEl.textContent=points.length;
+      setStatus(`Loaded ${points.length} locations`+(pops.length?` • population data detected`:''));
+      renderMarkers();
+    })().catch(err=>setStatus('Error: '+err.message));
+  </script>
+</body>
+</html>
