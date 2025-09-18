@@ -1,238 +1,203 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
 
-  <style>
-    :root{ --brand:#0f172a; --accent:#f59e0b; --ink:#111827; }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
-
-    /* Brand header */
-    .brand{background:linear-gradient(135deg,var(--brand),#1f2937);color:#fff;border-bottom:4px solid var(--accent)}
-    .brand-inner{max-width:1200px;margin:0 auto;padding:20px 16px;display:flex;gap:16px;align-items:center}
-    .logo{width:56px;height:56px;object-fit:contain;display:block}
-    .titles h1{margin:0 0 6px;font-weight:800;letter-spacing:.2px}
-    .tagline{margin:0 0 10px;opacity:.95}
-    .pills{display:flex;flex-wrap:wrap;gap:8px}
-    .pill{background:#ffffff14;border:1px solid #ffffff33;color:#fff;padding:6px 10px;border-radius:999px;font-size:12px;backdrop-filter:blur(2px)}
-
-    .wrap{max-width:1200px;margin:0 auto;padding:16px}
-    #map{height:74vh;min-height:420px;border-radius:16px}
-
-    /* HUD */
-    .hud{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
-    .status,.panel{background:#fff;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-    .panel label{display:flex;gap:6px;align-items:center;cursor:pointer}
-    .panel .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .btn,.select{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px}
-    .btn:hover{background:#f9fafb}
-
-    /* Population legend */
-    .legend{position:fixed;left:12px;bottom:12px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
-    .legend .bar{width:180px;height:10px;background:linear-gradient(90deg,#c7d2fe,#1e3a8a);border-radius:6px;margin:6px 0}
-    .legend .labels{display:flex;justify-content:space-between;color:#374151}
-
-    /* Segment distance labels */
-    .seglabel{background:#fff;border:1px solid #ddd;border-radius:999px;padding:2px 6px;font-size:11px;
-              box-shadow:0 1px 4px rgba(0,0,0,.25); white-space:nowrap;}
-
-    @media (max-width:640px){
-      .brand-inner{flex-direction:column;align-items:flex-start}
-      .logo{width:44px;height:44px}
-    }
-  </style>
+<style>
+:root{--brand:#0f172a;--accent:#f59e0b;--ink:#111827}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+.brand{background:linear-gradient(135deg,var(--brand),#1f2937);color:#fff;border-bottom:4px solid var(--accent)}
+.brand-inner{max-width:1200px;margin:0 auto;padding:20px 16px;display:flex;gap:16px;align-items:center}
+.logo{width:56px;height:56px;object-fit:contain;display:block}
+.titles h1{margin:0 0 6px;font-weight:800;letter-spacing:.2px}
+.tagline{margin:0 0 10px;opacity:.95}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{background:#ffffff14;border:1px solid #ffffff33;color:#fff;padding:6px 10px;border-radius:999px;font-size:12px}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+#map{height:74vh;min-height:420px;border-radius:16px;background:#f8fafc}
+.hud{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.status,.panel{background:#fff;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.panel .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn,.select{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px}
+.btn:hover{background:#f9fafb}
+.legend{position:fixed;left:12px;bottom:12px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.legend .bar{width:180px;height:10px;background:linear-gradient(90deg,#c7d2fe,#1e3a8a);border-radius:6px;margin:6px 0}
+.legend .labels{display:flex;justify-content:space-between;color:#374151}
+.seglabel{background:#fff;border:1px solid #ddd;border-radius:999px;padding:2px 6px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.25);white-space:nowrap}
+@media (max-width:640px){.brand-inner{flex-direction:column;align-items:flex-start}.logo{width:44px;height:44px}}
+</style>
 </head>
 <body>
-  <header class="brand">
-    <div class="brand-inner">
-      <img class="logo" src="./assets/connect66-logo.svg" alt="Connect66" onerror="this.style.display='none'">
-      <div class="titles">
-        <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
-        <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
-        <div class="pills">
-          <span class="pill"><span id="siteCount">44</span> sites</span>
-          <span class="pill">statewide coverage</span>
-          <span class="pill">shovel-ready</span>
-        </div>
+<header class="brand">
+  <div class="brand-inner">
+    <img class="logo" src="./assets/connect66-logo.svg" alt="Connect66" onerror="this.style.display='none'">
+    <div class="titles">
+      <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
+      <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
+      <div class="pills">
+        <span class="pill"><span id="siteCount">44</span> sites</span>
+        <span class="pill">statewide coverage</span>
+        <span class="pill">shovel-ready</span>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
-  <div class="wrap"><div id="map"></div></div>
+<div class="wrap"><div id="map"></div></div>
 
-  <div class="hud">
-    <div class="panel">
-      <div class="row">
-        <label><input type="checkbox" id="measureToggle"> Measure distance</label>
-        <button class="btn" id="resetMeasure">Reset</button>
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="popToggle" checked> Color by population (if available)</label>
-      </div>
-      <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
-      <div class="row">
-        <label><input type="checkbox" id="routeToggle"> Show route line</label>
-        <label><input type="checkbox" id="segToggle"> Label distances</label>
-        <select id="orderSelect" class="select">
-          <option value="west" selected>Order: West → East</option>
-          <option value="east">Order: East → West</option>
-          <option value="file">Order: As in file</option>
-        </select>
-      </div>
+<div class="hud">
+  <div class="panel">
+    <div class="row">
+      <label><input type="checkbox" id="measureToggle"> Measure distance</label>
+      <button class="btn" id="resetMeasure">Reset</button>
     </div>
-    <div class="status" id="status">Loading…</div>
+    <div class="row">
+      <label><input type="checkbox" id="popToggle" checked> Color by population</label>
+    </div>
+    <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
+    <div class="row">
+      <label><input type="checkbox" id="routeToggle"> Show route line</label>
+      <label><input type="checkbox" id="segToggle"> Label distances</label>
+      <select id="orderSelect" class="select">
+        <option value="west" selected>Order: West → East</option>
+        <option value="east">Order: East → West</option>
+        <option value="file">Order: As in file</option>
+      </select>
+    </div>
   </div>
+  <div class="status" id="status">Loading…</div>
+</div>
 
-  <div class="legend" id="legend" style="display:none;">
-    <div><strong>Population</strong></div>
-    <div class="bar"></div>
-    <div class="labels"><span id="minPop">min</span><span id="maxPop">max</span></div>
-  </div>
+<div class="legend" id="legend" style="display:none;">
+  <div><strong>Population</strong></div>
+  <div class="bar"></div>
+  <div class="labels"><span id="minPop">min</span><span id="maxPop">max</span></div>
+</div>
 
-  <script>
-    // ------- helpers -------
-    const R=6371, toRad=d=>d*Math.PI/180;
-    const haversine=(a,b)=>{const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(s))};
-    const popColor=(min,max,val)=>{if(!Number.isFinite(val)||max===min)return '#1e3a8a';const t=Math.max(0,Math.min(1,(val-min)/(max-min)));const h=225-3*t,s=90+5*t,l=80-50*t;return `hsl(${h}, ${s}%, ${l}%)`};
+<script>
+(function(){
+  const ready = () => new Promise(r => {
+    if (window.L) return r();
+    window.addEventListener('load', r);
+  });
 
-    const statusEl=document.getElementById('status');
-    const siteCountEl=document.getElementById('siteCount');
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const haversine=(a,b)=>{const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(s))};
+  const popColor=(min,max,val)=>{if(!Number.isFinite(val)||max===min)return '#1e3a8a';const t=Math.max(0,Math.min(1,(val-min)/(max-min)));const h=225-3*t,s=90+5*t,l=80-50*t;return `hsl(${h}, ${s}%, ${l}%)`};
 
-    function setStatus(msg){ statusEl.textContent = msg; }
+  const statusEl=document.getElementById('status');
+  const setStatus = m => statusEl.textContent = m;
 
-    // ------- map -------
-    const map=L.map('map').setView([35.5,-97.5],6);
+  let map, markers=[], halos=[], points=[], popMin=null, popMax=null, measureSel=[], measureLine=null;
+  let routeLine=null, routeLabels=[];
+
+  function clearRoute(){ if(routeLine){map.removeLayer(routeLine);routeLine=null;} routeLabels.forEach(l=>map.removeLayer(l)); routeLabels=[]; }
+  function drawMeasurement(){
+    if(measureLine){ map.removeLayer(measureLine); measureLine=null; }
+    const[a,b]=measureSel; const km=haversine(a,b), mi=km*0.621371;
+    measureLine=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#f59e0b',weight:4}).addTo(map);
+    map.fitBounds(measureLine.getBounds(),{padding:[50,50]});
+    setStatus(`Distance: ${mi.toFixed(1)} miles (${km.toFixed(1)} km) — ${a.city} → ${b.city}`);
+    measureSel=[];
+  }
+
+  function renderRoute(order, labelSegments){
+    clearRoute();
+    if(!document.getElementById('routeToggle').checked || points.length<2) return;
+    let ordered = points.slice();
+    if(order==='west') ordered.sort((a,b)=>a.lon-b.lon);
+    else if(order==='east') ordered.sort((a,b)=>b.lon-a.lon);
+    const latlngs = ordered.map(p=>[p.lat,p.lon]);
+    routeLine = L.polyline(latlngs,{color:'#f59e0b',weight:4,opacity:.9}).addTo(map);
+    let totalKm = 0;
+    if(labelSegments){
+      for(let i=0;i<ordered.length-1;i++){
+        const a=ordered[i], b=ordered[i+1];
+        const km=haversine(a,b); totalKm+=km;
+        const mi=km*0.621371, mid=[(a.lat+b.lat)/2,(a.lon+b.lon)/2];
+        const label=L.marker(mid,{icon:L.divIcon({className:'seglabel',html:`${mi.toFixed(1)} mi`})}).addTo(map);
+        routeLabels.push(label);
+      }
+    } else {
+      for(let i=0;i<ordered.length-1;i++) totalKm+=haversine(ordered[i],ordered[i+1]);
+    }
+    setStatus(`Loaded ${points.length} locations • Route length ~ ${(totalKm*0.621371).toFixed(1)} miles`);
+  }
+
+  function renderMarkers(){
+    markers.forEach(m=>map.removeLayer(m)); markers=[];
+    halos.forEach(h=>map.removeLayer(h)); halos=[];
+    const usePop=document.getElementById('popToggle').checked && Number.isFinite(popMin) && Number.isFinite(popMax);
+    const bounds=[];
+    points.forEach(p=>{
+      const m=L.marker([p.lat,p.lon]).addTo(map)
+        .bindPopup(`<strong>${p.city}, ${p.state}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}${Number.isFinite(p.population)?`<br>Population: ${p.population.toLocaleString()}`:''}`);
+      m.on('click',()=>{ if(!document.getElementById('measureToggle').checked) return; measureSel.push(p); if(measureSel.length===2) drawMeasurement(); else setStatus(\`Selected: \${p.city}. Pick another…\`); });
+      markers.push(m); bounds.push([p.lat,p.lon]);
+      if(usePop && Number.isFinite(p.population)){
+        halos.push(L.circleMarker([p.lat,p.lon],{radius:10,stroke:false,fillOpacity:.7,fillColor:popColor(popMin,popMax,p.population)}).addTo(map));
+      }
+    });
+    if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+    // redraw route on top
+    renderRoute(document.getElementById('orderSelect').value, document.getElementById('segToggle').checked);
+  }
+
+  async function loadPopulation(){
+    try{
+      const r=await fetch('./assets/population.json',{cache:'no-cache'});
+      if(!r.ok) return {};
+      return await r.json();               // will throw if invalid JSON
+    }catch(e){
+      console.warn('Population JSON invalid or missing', e);
+      return {};                           // proceed without population
+    }
+  }
+
+  ready().then(async ()=>{
+    // 1) Map base
+    map = L.map('map').setView([35.5,-97.5],6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);
 
-    // UI
-    const measureToggle=document.getElementById('measureToggle');
-    const resetBtn=document.getElementById('resetMeasure');
-    const popToggle=document.getElementById('popToggle');
-    const routeToggle=document.getElementById('routeToggle');
-    const segToggle=document.getElementById('segToggle');
-    const orderSelect=document.getElementById('orderSelect');
+    // UI hooks
+    document.getElementById('resetMeasure').addEventListener('click',()=>{measureSel=[]; if(measureLine){map.removeLayer(measureLine);measureLine=null;} setStatus('Ready.')});
+    ['popToggle','routeToggle','segToggle','orderSelect'].forEach(id=>{
+      document.getElementById(id).addEventListener('change',()=>{ renderMarkers(); });
+    });
 
-    const legendEl=document.getElementById('legend');
-    const minPopEl=document.getElementById('minPop');
-    const maxPopEl=document.getElementById('maxPop');
+    // 2) Data
+    const popData = await loadPopulation();
+    const rows = await fetch('./assets/cities.baked.json',{cache:'no-cache'})
+      .then(r=>{ if(!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); });
 
-    let markers=[], halos=[], points=[], popMin=null, popMax=null;
-    let measureSel=[], measureLine=null;
-
-    // Route visuals
-    let routeLine=null, routeLabels=[];
-
-    function clearRoute(){
-      if(routeLine){ map.removeLayer(routeLine); routeLine=null; }
-      routeLabels.forEach(l=>map.removeLayer(l)); routeLabels=[];
-    }
-
-    function renderRoute(){
-      clearRoute();
-      if(!routeToggle.checked || points.length<2) return;
-
-      // Determine order
-      let ordered = points.slice();
-      const ord = orderSelect.value;
-      if(ord==='west'){ ordered.sort((a,b)=>a.lon-b.lon); }
-      else if(ord==='east'){ ordered.sort((a,b)=>b.lon-a.lon); }
-      // else 'file' keeps original loaded order
-
-      // Draw line
-      const latlngs = ordered.map(p=>[p.lat,p.lon]);
-      routeLine = L.polyline(latlngs, { color: '#f59e0b', weight: 4, opacity: 0.9 }).addTo(map);
-
-      // Segment labels + total
-      let totalKm = 0;
-      if(segToggle.checked){
-        for(let i=0;i<ordered.length-1;i++){
-          const a=ordered[i], b=ordered[i+1];
-          const km=haversine(a,b); totalKm+=km;
-          const mi=km*0.621371;
-          const mid=[(a.lat+b.lat)/2,(a.lon+b.lon)/2];
-          const label=L.marker(mid,{
-            icon: L.divIcon({ className:'seglabel', html:`${mi.toFixed(1)} mi` })
-          }).addTo(map);
-          routeLabels.push(label);
-        }
-      }else{
-        for(let i=0;i<ordered.length-1;i++){
-          totalKm+=haversine(ordered[i], ordered[i+1]);
-        }
+    const siteCountEl=document.getElementById('siteCount');
+    points = rows.map(row=>{
+      const city=row.city??row.City??row.name??row.Name??'';
+      const state=row.state??row.State??'';
+      const lat=Number(row.lat??row.latitude);
+      const lon=Number(row.lon??row.lng??row.longitude);
+      let population;
+      if(popData && typeof popData==='object' && !Array.isArray(popData)){
+        const key=`${city}, ${state}`; if(key in popData) population=Number(popData[key]);
       }
-      const totalMi = totalKm*0.621371;
-      setStatus(`Loaded ${points.length} locations • Route length ~ ${totalMi.toFixed(1)} miles`);
-    }
+      return {city,state,lat,lon,population};
+    }).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
 
-    function drawMeasurement(){
-      if(measureLine){ map.removeLayer(measureLine); measureLine=null; }
-      const[a,b]=measureSel; const km=haversine(a,b), mi=km*0.621371;
-      measureLine=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#f59e0b',weight:4}).addTo(map);
-      map.fitBounds(measureLine.getBounds(),{padding:[50,50]});
-      setStatus(`Distance: ${mi.toFixed(1)} miles (${km.toFixed(1)} km) — ${a.city} → ${b.city}`);
-      measureSel=[];
-    }
-    resetBtn.addEventListener('click',()=>{measureSel=[]; if(measureLine){map.removeLayer(measureLine);measureLine=null;} setStatus('Ready.');});
-    popToggle.addEventListener('change', ()=>{ renderMarkers(); renderRoute(); });
-    routeToggle.addEventListener('change', renderRoute);
-    segToggle.addEventListener('change', renderRoute);
-    orderSelect.addEventListener('change', renderRoute);
+    const pops = points.map(p=>p.population).filter(n=>Number.isFinite(n));
+    if(pops.length){ popMin=Math.min(...pops); popMax=Math.max(...pops); document.getElementById('legend').style.display='block'; document.getElementById('minPop').textContent=popMin.toLocaleString(); document.getElementById('maxPop').textContent=popMax.toLocaleString(); }
 
-    function renderMarkers(){
-      markers.forEach(m=>map.removeLayer(m)); markers=[];
-      halos.forEach(h=>map.removeLayer(h)); halos=[];
-      const usePop=popToggle.checked&&Number.isFinite(popMin)&&Number.isFinite(popMax);
-      const bounds=[];
-      points.forEach(p=>{
-        const m=L.marker([p.lat,p.lon]).addTo(map)
-          .bindPopup(`<strong>${p.city}, ${p.state}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}${Number.isFinite(p.population)?`<br>Population: ${p.population.toLocaleString()}`:''}`);
-        m.on('click',()=>{ if(!measureToggle.checked) return; measureSel.push(p); if(measureSel.length===2) drawMeasurement(); else setStatus(`Selected: ${p.city}. Pick another…`); });
-        markers.push(m); bounds.push([p.lat,p.lon]);
-        if(usePop&&Number.isFinite(p.population)){
-          halos.push(L.circleMarker([p.lat,p.lon],{radius:10,stroke:false,fillOpacity:.7,fillColor:popColor(popMin,popMax,p.population)}).addTo(map));
-        }
-      });
-      if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
-      // If route is on, redraw it after marker refresh (keeps labels above line)
-      renderRoute();
-    }
+    if(siteCountEl) siteCountEl.textContent = points.length;
+    setStatus(`Loaded ${points.length} locations${pops.length?' • population data detected':''}`);
 
-    async function loadPopulation(){
-      try{
-        const r=await fetch('./assets/population.json',{cache:'no-cache'});
-        if(!r.ok) return {};
-        return await r.json();
-      }catch{ return {}; }
-    }
-
-    (async()=>{
-      const popData=await loadPopulation();
-      const rows=await fetch('./assets/cities.baked.json',{cache:'no-cache'}).then(r=>{ if(!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); });
-
-      points=rows.map(row=>{
-        const city=row.city??row.City??row.name??row.Name??'', state=row.state??row.State??'';
-        const lat=Number(row.lat??row.latitude), lon=Number(row.lon??row.lng??row.longitude);
-        let population;
-        if(popData && typeof popData==='object' && !Array.isArray(popData)){
-          const key=`${city}, ${state}`; if(key in popData) population=Number(popData[key]);
-        }
-        return {city,state,lat,lon,population};
-      }).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
-
-      const pops=points.map(p=>p.population).filter(n=>Number.isFinite(n));
-      if(pops.length){ popMin=Math.min(...pops); popMax=Math.max(...pops); }
-
-      if(siteCountEl) siteCountEl.textContent=points.length;
-      setStatus(`Loaded ${points.length} locations`+(pops.length?` • population data detected`:''));
-      renderMarkers();
-    })().catch(err=>setStatus('Error: '+err.message));
-  </script>
+    renderMarkers(); // also draws route if toggled
+  }).catch(err=> setStatus('Error: '+err.message) );
+})();
+</script>
 </body>
 </html>
