@@ -1,87 +1,28 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Connect66 – OK Grant Cities Map</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connect66 — OK Grant Cities (Baked)</title>
+
+  <!-- (Optional) your styles -->
+  <link rel="stylesheet" href="./assets/styles.css" />
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #map { height: 600px; margin-top: 20px; }
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; }
+    .wrap { padding: 16px; }
+    #map { height: 78vh; border-radius: 16px; }
+    .status { position: fixed; top: 12px; right: 12px; background:#fff; border:1px solid #ddd;
+              padding: 6px 10px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
   </style>
 </head>
 <body>
-  <h1>OK Grant – Cities</h1>
-
-  <p><strong>What This Project Delivers</strong><br/>
-    Gateway towers double as connectivity hubs: public WiFi for engagement, analytics for foot-traffic insights, 
-    and provisions for future IP cameras and digital screens.
-  </p>
-
-  <p><strong>Core Capabilities</strong></p>
-  <ul>
-    <li>WiFi with captive portal for engagement and analytics</li>
-    <li>Managed networking with PoE, remote monitoring, security segmentation</li>
-    <li>Scalable backhaul (ISP/cellular/satellite)</li>
-  </ul>
-
-  <p><strong>Future-Ready</strong></p>
-  <ul>
-    <li>Digital screen support for city promos and events</li>
-    <li>Camera “Live Look” capability with secure access</li>
-    <li>Lockable, weatherproof enclosure with service clearance</li>
-  </ul>
-
-  <h2>Oklahoma Cities Map</h2>
-  <div id="map"></div>
-
- <script>
-  // Init map
-  const map = L.map('map').setView([35.5, -97.5], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  const statusEl = document.createElement('div');
-  statusEl.style.cssText = 'position:absolute;top:8px;right:8px;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:8px;font:12px system-ui;';
-  statusEl.textContent = 'Loading…';
-  document.body.appendChild(statusEl);
-
-  fetch('assets/cities.baked.json')
-    .then(r => {
-      if (!r.ok) throw new Error('Could not load assets/cities.baked.json');
-      return r.json();
-    })
-    .then(rows => {
-      // Normalize possible field names: lat/lon vs lat/lng, city/name, etc.
-      const pts = rows.map(row => {
-        const lat = row.lat ?? row.latitude;
-        const lon = row.lon ?? row.lng ?? row.longitude;
-        const city = row.city ?? row.City ?? row.name ?? row.Name;
-        const state = row.state ?? row.State ?? '';
-        return { lat: Number(lat), lon: Number(lon), label: state ? `${city}, ${state}` : String(city || '') };
-      }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
-
-      statusEl.textContent = `Loaded ${pts.length} locations`;
-      if (!pts.length) {
-        statusEl.textContent += ' — none had valid lat/lon. Open /assets/cities.baked.json to verify it has coords.';
-        return;
-      }
-
-      const bounds = [];
-      pts.forEach(p => {
-        L.marker([p.lat, p.lon]).addTo(map).bindPopup(`<strong>${p.label}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}`);
-        bounds.push([p.lat, p.lon]);
-      });
-      if (bounds.length) map.fitBounds(bounds, { padding: [30, 30] });
-    })
-    .catch(err => {
-      statusEl.textContent = `Error: ${err.message}`;
-      console.error(err);
-    });
-</script>
-
-
+  <div class="wrap">
+    <h1>Oklahoma Cities Map (Baked)</h1>
+    <div id="map"></div>
+  </div>
+  <div class="status" id="status">Loading…</div>
