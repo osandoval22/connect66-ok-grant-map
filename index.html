@@ -12,66 +12,245 @@
 :root{--brand:#0f172a;--accent:#f59e0b;--ink:#111827}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
 .brand{background:linear-gradient(135deg,var(--brand),#1f2937);color:#fff;border-bottom:4px solid var(--accent)}
-.brand-inner{max-width:1200px;margin:0 auto;padding:20px 16px}
-.brand h1{margin:0 0 6px;font-weight:800} .tagline{margin:0 0 10px;opacity:.95}
+.brand-inner{max-width:1200px;margin:0 auto;padding:20px 16px;display:flex;gap:16px;align-items:center}
+.logo{width:56px;height:56px;object-fit:contain;display:block}
+.titles h1{margin:0 0 6px;font-weight:800} .tagline{margin:0 0 10px;opacity:.95}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{background:#ffffff14;border:1px solid #ffffff33;color:#fff;padding:6px 10px;border-radius:999px;font-size:12px}
 .wrap{max-width:1200px;margin:0 auto;padding:16px}
 #map{height:74vh;min-height:420px;border-radius:16px;background:#f8fafc}
-.status{position:fixed;top:12px;right:12px;background:#fff;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.hud{position:fixed;top:12px;right:12px;display:flex;flex-direction:column;gap:8px;z-index:1000}
+.status,.panel{background:#fff;border:1px solid #ddd;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.panel .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn,.select{padding:6px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:12px}
+.btn:hover{background:#f9fafb}
+.legend{position:fixed;left:12px;bottom:12px;background:#fff;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.legend .bar{width:180px;height:10px;background:linear-gradient(90deg,#c7d2fe,#1e3a8a);border-radius:6px;margin:6px 0}
+.legend .labels{display:flex;justify-content:space-between;color:#374151}
+.seglabel{background:#fff;border:1px solid #ddd;border-radius:999px;padding:2px 6px;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+@media (max-width:640px){.brand-inner{flex-direction:column;align-items:flex-start}.logo{width:44px;height:44px}}
 </style>
 </head>
 <body>
 <header class="brand">
   <div class="brand-inner">
-    <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
-    <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
+    <img class="logo" src="./assets/connect66-logo.svg" alt="Connect66" onerror="this.style.display='none'">
+    <div class="titles">
+      <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
+      <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
+      <div class="pills">
+        <span class="pill"><span id="siteCount">44</span> sites</span>
+        <span class="pill">statewide coverage</span>
+        <span class="pill">shovel-ready</span>
+      </div>
+    </div>
   </div>
 </header>
 
 <div class="wrap"><div id="map"></div></div>
-<div class="status" id="status">Loading…</div>
+
+<div class="hud">
+  <div class="panel">
+    <div class="row">
+      <label><input type="checkbox" id="measureToggle"> Measure distance</label>
+      <button class="btn" id="resetMeasure">Reset</button>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" id="popToggle" checked> Color by population (if available)</label>
+    </div>
+    <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
+    <div class="row">
+      <label><input type="checkbox" id="routeToggle"> Show route line</label>
+      <label><input type="checkbox" id="segToggle"> Label distances</label>
+      <select id="orderSelect" class="select">
+        <option value="west" selected>Order: West → East</option>
+        <option value="east">Order: East → West</option>
+        <option value="file">Order: As in file</option>
+      </select>
+    </div>
+  </div>
+  <div class="status" id="status">Loading…</div>
+</div>
+
+<div class="legend" id="legend" style="display:none;">
+  <div><strong>Population</strong></div>
+  <div class="bar"></div>
+  <div class="labels"><span id="minPop">min</span><span id="maxPop">max</span></div>
+</div>
 
 <script>
 (function(){
-  // show any runtime error plainly
-  const statusEl = document.getElementById('status');
-  const fail = msg => { statusEl.textContent = 'Error: ' + msg; };
+  // --- Utility: robust fetch that never crashes the page ---
+  async function safeFetchJSON(url){
+    try{
+      const r = await fetch(url, {cache:'no-cache'});
+      if(!r.ok) return {ok:false, error:`${url} ${r.status}`};
+      try { return {ok:true, data: await r.json()}; }
+      catch(e){ return {ok:false, error:`${url} invalid JSON`}; }
+    }catch(e){ return {ok:false, error:`${url} network error`}; }
+  }
 
-  // 1) base map
-  if (!window.L) return fail('Leaflet failed to load');
-  const map = L.map('map').setView([35.5,-97.5], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'&copy; OpenStreetMap contributors', maxZoom: 19
-  }).addTo(map);
+  // --- Math helpers ---
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const haversine=(a,b)=>{const dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),s=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(s))};
+  const popColor=(min,max,val)=>{if(!Number.isFinite(val)||max===min)return '#1e3a8a';const t=Math.max(0,Math.min(1,(val-min)/(max-min)));const h=225-3*t,s=90+5*t,l=80-50*t;return `hsl(${h}, ${s}%, ${l}%)`};
 
-  // 2) fetch & plot baked cities (only dependency to render)
-  fetch('./assets/cities.baked.json', {cache:'no-cache'})
-    .then(r => { if(!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); })
-    .then(rows => {
-      const pts = rows.map(row => ({
-        city: row.city ?? row.City ?? '',
-        state: row.state ?? row.State ?? 'OK',
-        lat: Number(row.lat ?? row.latitude),
-        lon: Number(row.lon ?? row.lng ?? row.longitude)
-      })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  // --- UI refs ---
+  const statusEl=document.getElementById('status');
+  const setStatus=msg=>statusEl.textContent=msg;
+  const siteCountEl=document.getElementById('siteCount');
+  const measureToggle=document.getElementById('measureToggle');
+  const resetBtn=document.getElementById('resetMeasure');
+  const popToggle=document.getElementById('popToggle');
+  const routeToggle=document.getElementById('routeToggle');
+  const segToggle=document.getElementById('segToggle');
+  const orderSelect=document.getElementById('orderSelect');
+  const legendEl=document.getElementById('legend');
+  const minPopEl=document.getElementById('minPop');
+  const maxPopEl=document.getElementById('maxPop');
 
-      if (!pts.length) throw new Error('No coordinates in cities.baked.json');
+  // --- Map ---
+  const map=L.map('map').setView([35.5,-97.5],6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19}).addTo(map);
 
-      const bounds = [];
-      pts.forEach(p => {
-        L.marker([p.lat,p.lon]).addTo(map)
-          .bindPopup(`<strong>${p.city}, ${p.state}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}`);
-        bounds.push([p.lat,p.lon]);
-      });
-      map.fitBounds(bounds, {padding:[30,30]});
-      statusEl.textContent = `Plotted ${pts.length} locations`;
+  // --- State ---
+  let points=[], popMin=null, popMax=null;
+  let markers=[], halos=[];
+  let routeLine=null, routeLabels=[];
+  let measureSel=[], measureLine=null;
 
-      // 3) OPTIONAL: try to load population; ignore if bad/missing
-      fetch('./assets/population.json', {cache:'no-cache'})
-        .then(r => r.ok ? r.json() : {})
-        .then(() => {/* intentionally no-op here to keep this minimal */})
-        .catch(()=>{ /* ignore */ });
-    })
-    .catch(err => fail(err.message));
+  // --- Rendering ---
+  function clearRoute(){ if(routeLine){map.removeLayer(routeLine);routeLine=null;} routeLabels.forEach(l=>map.removeLayer(l)); routeLabels=[]; }
+  function clearMeasure(){ if(measureLine){map.removeLayer(measureLine);measureLine=null;} measureSel=[]; }
+
+  function renderRoute(){
+    clearRoute();
+    if(!routeToggle.checked || points.length<2) return;
+    let ordered=points.slice();
+    if(orderSelect.value==='west') ordered.sort((a,b)=>a.lon-b.lon);
+    else if(orderSelect.value==='east') ordered.sort((a,b)=>b.lon-a.lon);
+    // else: 'file' = keep original
+
+    const latlngs=ordered.map(p=>[p.lat,p.lon]);
+    routeLine=L.polyline(latlngs,{color:'#f59e0b',weight:4,opacity:.9}).addTo(map);
+
+    let totalKm=0;
+    if(segToggle.checked){
+      for(let i=0;i<ordered.length-1;i++){
+        const a=ordered[i], b=ordered[i+1];
+        const km=haversine(a,b); totalKm+=km;
+        const mi=(km*0.621371).toFixed(1);
+        const mid=[(a.lat+b.lat)/2,(a.lon+b.lon)/2];
+        routeLabels.push(L.marker(mid,{icon:L.divIcon({className:'seglabel',html:`${mi} mi`})}).addTo(map));
+      }
+    }else{
+      for(let i=0;i<ordered.length-1;i++) totalKm+=haversine(ordered[i],ordered[i+1]);
+    }
+    setStatus(`Loaded ${points.length} locations • Route length ~ ${(totalKm*0.621371).toFixed(1)} miles`);
+  }
+
+  function renderMarkers(){
+    // wipe
+    markers.forEach(m=>map.removeLayer(m)); markers=[];
+    halos.forEach(h=>map.removeLayer(h)); halos=[];
+    clearRoute(); clearMeasure();
+
+    const usePop = popToggle.checked && Number.isFinite(popMin) && Number.isFinite(popMax);
+    const bounds=[];
+    points.forEach(p=>{
+      const m=L.marker([p.lat,p.lon]).addTo(map)
+        .bindPopup(`<strong>${p.city}, ${p.state}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}${Number.isFinite(p.population)?`<br>Population: ${p.population.toLocaleString()}`:''}`);
+      m.on('click',()=>{ if(!measureToggle.checked) return; measureSel.push(p); if(measureSel.length===2) drawMeasurement(); else setStatus(\`Selected: \${p.city}. Pick another…\`); });
+      markers.push(m); bounds.push([p.lat,p.lon]);
+      if(usePop && Number.isFinite(p.population)){
+        halos.push(L.circleMarker([p.lat,p.lon],{radius:10,stroke:false,fillOpacity:.7,fillColor:popColor(popMin,popMax,p.population)}).addTo(map));
+      }
+    });
+    if(bounds.length) map.fitBounds(bounds,{padding:[30,30]});
+    renderRoute();
+  }
+
+  function drawMeasurement(){
+    if(measureLine){map.removeLayer(measureLine);measureLine=null;}
+    const[a,b]=measureSel; const km=haversine(a,b), mi=km*0.621371;
+    measureLine=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#f59e0b',weight:4}).addTo(map);
+    map.fitBounds(measureLine.getBounds(),{padding:[50,50]});
+    setStatus(`Distance: ${mi.toFixed(1)} miles (${km.toFixed(1)} km) — ${a.city} → ${b.city}`);
+    measureSel=[];
+  }
+
+  // UI handlers
+  resetBtn.addEventListener('click',()=>{ clearMeasure(); setStatus('Ready.'); });
+  [popToggle, routeToggle, segToggle, orderSelect].forEach(el=>{
+    el.addEventListener('change', renderMarkers);
+  });
+
+  // --- Load data safely ---
+  (async ()=>{
+    // 1) Cities (required)
+    const cities = await safeFetchJSON('./assets/cities.baked.json');
+    if(!cities.ok){
+      setStatus(`Error: ${cities.error}`);
+      return; // without coords we can’t plot
+    }
+    const rows = Array.isArray(cities.data) ? cities.data : [];
+    points = rows.map(row=>{
+      const city = row.city ?? row.City ?? row.name ?? row.Name ?? '';
+      const state = row.state ?? row.State ?? 'OK';
+      const lat = Number(row.lat ?? row.latitude);
+      const lon = Number(row.lon ?? row.lng ?? row.longitude);
+      return {city,state,lat,lon};
+    }).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+
+    if(!points.length){
+      setStatus('Error: No coordinates found in cities.baked.json');
+      return;
+    }
+    if(siteCountEl) siteCountEl.textContent = points.length;
+
+    // 2) Population (optional; never blocks rendering)
+    const pop = await safeFetchJSON('./assets/population.json');
+    if(pop.ok && pop.data){
+      let mapObj = null;
+      if(Array.isArray(pop.data)){
+        // array of {city,state,population}
+        mapObj = {};
+        for(const r of pop.data){
+          const key = `${(r.city||'').trim()}, ${(r.state||'').trim()}`;
+          const val = Number(r.population);
+          if(key && Number.isFinite(val)) mapObj[key] = val;
+        }
+      } else if(typeof pop.data === 'object'){
+        mapObj = pop.data; // {"City, ST": number}
+      }
+      if(mapObj){
+        for(const p of points){
+          const key = `${p.city}, ${p.state}`;
+          if (key in mapObj) {
+            const val = Number(mapObj[key]);
+            if(Number.isFinite(val)) p.population = val;
+          }
+        }
+        const pops = points.map(p=>p.population).filter(n=>Number.isFinite(n));
+        if(pops.length){
+          popMin = Math.min(...pops);
+          popMax = Math.max(...pops);
+          legendEl.style.display='block';
+          minPopEl.textContent = popMin.toLocaleString();
+          maxPopEl.textContent = popMax.toLocaleString();
+        } else {
+          legendEl.style.display='none';
+        }
+      }
+    } else {
+      // population missing/invalid – proceed silently
+      legendEl.style.display='none';
+    }
+
+    // 3) Render
+    setStatus(`Loaded ${points.length} locations${Number.isFinite(popMin)?' • population data detected':''}`);
+    renderMarkers();
+  })();
 })();
 </script>
 </body>
