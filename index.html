@@ -5,14 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Oklahoma Cities Map (Baked)</title>
 
-  <!-- Leaflet CSS/JS -->
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- (optional) your styles; safe to keep or remove -->
-  <link rel="stylesheet" href="./assets/styles.css" />
-
-  <!-- CRITICAL: give the map an explicit height -->
   <style>
     body { margin: 0; font-family: system-ui, Arial, sans-serif; }
     .wrap { padding: 16px; }
@@ -29,7 +25,6 @@
   <div class="status" id="status">Loading…</div>
 
   <script>
-    // Init map
     const map = L.map('map').setView([35.5, -97.5], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
@@ -37,7 +32,6 @@
 
     const statusEl = document.getElementById('status');
 
-    // Load baked JSON and plot
     fetch('./assets/cities.baked.json')
       .then(r => { if (!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); })
       .then(rows => {
@@ -45,7 +39,7 @@
           city:  row.city ?? row.City ?? row.name ?? row.Name ?? '',
           state: row.state ?? row.State ?? '',
           lat:   Number(row.lat ?? row.latitude),
-          lon:   Number(row.lon ?? row.lng ?? row.longitude),
+          lon:   Number(row.lon ?? row.lng ?? row.longitude)
         })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
 
         statusEl.textContent = `Loaded ${pts.length} locations`;
