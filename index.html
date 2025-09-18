@@ -1,195 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connect66 – OK Grant Cities Map</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #map { height: 600px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>OK Grant – Cities</h1>
 
+  <p><strong>What This Project Delivers</strong><br/>
+    Gateway towers double as connectivity hubs: public WiFi for engagement, analytics for foot-traffic insights, 
+    and provisions for future IP cameras and digital screens.
+  </p>
 
+  <p><strong>Core Capabilities</strong></p>
+  <ul>
+    <li>WiFi with captive portal for engagement and analytics</li>
+    <li>Managed networking with PoE, remote monitoring, security segmentation</li>
+    <li>Scalable backhaul (ISP/cellular/satellite)</li>
+  </ul>
 
+  <p><strong>Future-Ready</strong></p>
+  <ul>
+    <li>Digital screen support for city promos and events</li>
+    <li>Camera “Live Look” capability with secure access</li>
+    <li>Lockable, weatherproof enclosure with service clearance</li>
+  </ul>
 
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Connect66 • Oklahoma Grant – Portable Map</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="./assets/styles.css" />
-  </head>
-  <body>
-    <div id="root"></div>
+  <h2>Oklahoma Cities Map</h2>
+  <div id="map"></div>
 
-    <!-- React & ReactDOM from CDN -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script>
+    // Initialize map
+    const map = L.map('map').setView([35.5, -97.5], 6); // Center on Oklahoma
 
-    <!-- Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
 
-    <script type="module">
-      const { useEffect, useMemo, useState, useRef } = React;
-
-      // Simple component without react-leaflet: use Leaflet directly for a single-file portable app
-      function App() {
-        const [cities, setCities] = useState([]);
-        const [points, setPoints] = useState([]);
-        const [query, setQuery] = useState("");
-        const [loading, setLoading] = useState(false);
-        const mapRef = useRef(null);
-        const markersRef = useRef([]);
-
-        // Load cities.json
-        useEffect(() => {
-          fetch('./assets/cities.baked.json').then(r => r.json()).then(cs => {
-          setCities(cs);
-          // Auto-start if no cached points
-          const cache = JSON.parse(localStorage.getItem("ok_grant_city_cache_v1") || "{}");
-          let anyCached = false;
-          for (const row of cs) {
-            const key = `${row.city},${row.state}`;
-            if (cache[key]) { anyCached = true; break; }
-          }
-          if (!anyCached) {
-            // kick off geocoding automatically
-            setTimeout(() => {
-              const btn = document.querySelector('button.btn');
-              if (btn) btn.click();
-            }, 300);
+    // Load pre-baked cities
+    fetch("assets/cities.baked.json")
+      .then(response => response.json())
+      .then(data => {
+        data.forEach(city => {
+          if (city.lat && city.lon) {
+            L.marker([city.lat, city.lon])
+              .addTo(map)
+              .bindPopup(`<strong>${city.name}</strong>`);
           }
         });
-        }, []);
-
-        // Leaflet map init
-        useEffect(() => {
-          if (mapRef.current) return;
-          const map = L.map('map').setView([35.4676, -97.5164], 6.5);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-          }).addTo(map);
-          mapRef.current = map;
-        }, []);
-
-        const cacheKey = "ok_grant_city_cache_v1";
-        const loadCache = () => {
-          try { return JSON.parse(localStorage.getItem(cacheKey) || "{}"); } catch { return {}; }
-        };
-        const saveCache = (obj) => localStorage.setItem(cacheKey, JSON.stringify(obj));
-
-        async function geocodeCity(city, state) {
-          const q = encodeURIComponent(`${city}, ${state}, USA`);
-          const url = `https://nominatim.openstreetmap.org/search?format=json&q=${q}&addressdetails=1&limit=1`;
-          try {
-            const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-            if (!res.ok) return null;
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-              return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-            }
-            return null;
-          } catch (e) { return null; }
-        }
-
-        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-        async function geocodeAll() {
-          setLoading(true);
-          const cache = loadCache();
-          const next = [];
-
-          for (const row of cities) {
-            const key = `${row.city},${row.state}`;
-            if (cache[key]) {
-              next.push({ ...row, lat: cache[key].lat, lon: cache[key].lon });
-              continue;
-            }
-            const coords = await geocodeCity(row.city, row.state);
-            if (coords) {
-              cache[key] = coords;
-              next.push({ ...row, lat: coords.lat, lon: coords.lon });
-              saveCache(cache);
-            }
-            await sleep(1100);
-          }
-          setPoints(next);
-          setLoading(false);
-        }
-
-        // Draw markers when points change
-        useEffect(() => {
-          if (!mapRef.current) return;
-          // clear old markers
-          markersRef.current.forEach(m => mapRef.current.removeLayer(m));
-          markersRef.current = [];
-
-          const filtered = points.filter(p => {
-            const q = query.trim().toLowerCase();
-            if (!q) return true;
-            return `${p.city}, ${p.state}`.toLowerCase().includes(q);
-          });
-
-          filtered.forEach(p => {
-            if (typeof p.lat === 'number' && typeof p.lon === 'number') {
-              const m = L.marker([p.lat, p.lon]).addTo(mapRef.current);
-              m.bindPopup(`<b>${p.city}, ${p.state}</b><br/>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}`);
-              markersRef.current.push(m);
-            }
-          });
-
-        }, [points, query]);
-
-        const mappedCount = points.length;
-        const filteredCount = points.filter(p => `${p.city}, ${p.state}`.toLowerCase().includes(query.trim().toLowerCase())).length;
-
-        return (
-          React.createElement('div', { className: 'layout' },
-            React.createElement('div', { className: 'sidebar' },
-              React.createElement('div', { className: 'card' },
-                React.createElement('div', { className: 'header' },
-                  React.createElement('h2', null, 'OK Grant – Cities'),
-                  React.createElement('span', { className: 'badge' }, `${filteredCount}/${mappedCount}`)
-                ),
-                React.createElement('div', { className: 'row' },
-                  React.createElement('input', {
-                    className: 'search',
-                    placeholder: 'Search city…',
-                    value: query,
-                    onChange: (e) => setQuery(e.target.value)
-                  }),
-                  React.createElement('button', { className: 'btn', onClick: geocodeAll, disabled: loading || !cities.length },
-                    loading ? 'Geocoding…' : 'Geocode & Map'
-                  )
-                ),
-                React.createElement('div', { className: 'hint' },
-                  'Tip: First run needs internet (geocoding + tiles). Results are cached for instant reloads.'
-                )
-              ),
-              React.createElement('div', { className: 'card about' },
-                React.createElement('h3', null, 'What This Project Delivers'),
-                React.createElement('p', null, 'Gateway towers double as connectivity hubs: public WiFi for engagement, analytics for foot-traffic insights, and provisions for future IP cameras and digital screens.'),
-                React.createElement('h3', null, 'Core Capabilities'),
-                React.createElement('ul', null,
-                  React.createElement('li', null, 'WiFi with captive portal for engagement and analytics'),
-                  React.createElement('li', null, 'Managed networking with PoE, remote monitoring, security segmentation'),
-                  React.createElement('li', null, 'Scalable backhaul (ISP/cellular/satellite)')
-                ),
-                React.createElement('h3', null, 'Future-Ready'),
-                React.createElement('ul', null,
-                  React.createElement('li', null, 'Digital screen support for city promos and events'),
-                  React.createElement('li', null, 'Camera “Live Look” capability with secure access'),
-                  React.createElement('li', null, 'Lockable, weatherproof enclosure with service clearance')
-                ),
-                React.createElement('div', { className: 'footer' },
-                  'Connect66 • Route 66 Gateway Towers – Oklahoma'
-                )
-              )
-            ),
-            React.createElement('div', { className: 'card' },
-              React.createElement('div', { className: 'header' },
-                React.createElement('h2', null, 'Oklahoma Cities Map'),
-                React.createElement('span', { className: 'badge' }, 'Leaflet • OSM')
-              ),
-              React.createElement('div', { id: 'map', style: { height: '80vh' } })
-            )
-          )
-        );
-      }
-
-      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
-    </script>
-  </body>
+      })
+      .catch(err => console.error("Error loading cities:", err));
+  </script>
+</body>
 </html>
+
