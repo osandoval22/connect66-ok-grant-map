@@ -3,35 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Oklahoma Cities Map (Baked)</title>
+  <title>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    body { margin: 0; font-family: system-ui, Arial, sans-serif; }
-    .wrap { padding: 16px; }
-    #map { height: 78vh; min-height: 420px; border-radius: 16px; }
-    .status { position: fixed; top: 12px; right: 12px; background:#fff; border:1px solid #ddd;
-              padding: 6px 10px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+    :root{
+      --brand:#0f172a;   /* deep slate */
+      --accent:#f59e0b;  /* amber */
+      --ink:#111827;     /* text */
+    }
+    *{box-sizing:border-box}
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink); }
+
+    /* ── Brand header ───────────────────────────────────────── */
+    .brand {
+      background: linear-gradient(135deg, var(--brand), #1f2937);
+      color:#fff; border-bottom:4px solid var(--accent);
+    }
+    .brand-inner {
+      max-width: 1200px; margin: 0 auto; padding: 20px 16px; display:flex; gap:16px; align-items:center;
+    }
+    .logo {
+      width: 56px; height: 56px; object-fit: contain; display:block;
+    }
+    .titles h1 {
+      margin:0 0 6px; font-weight:800; letter-spacing:.2px;
+    }
+    .tagline { margin:0 0 10px; opacity:.95 }
+    .pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill {
+      background:#ffffff14; border:1px solid #ffffff33; color:#fff;
+      padding:6px 10px; border-radius:999px; font-size:12px; backdrop-filter: blur(2px);
+    }
+
+    /* ── Content & Map ──────────────────────────────────────── */
+    .wrap { max-width:1200px; margin: 0 auto; padding: 16px; }
+    #map { height: 74vh; min-height: 420px; border-radius: 16px; }
+    .status {
+      position: fixed; top: 12px; right: 12px; background:#fff; border:1px solid #ddd;
+      padding: 6px 10px; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.06);
+    }
+
+    @media (max-width: 640px){
+      .brand-inner{flex-direction:column; align-items:flex-start}
+      .logo{width:44px; height:44px}
+    }
   </style>
 </head>
 <body>
+
+  <!-- Brand header -->
+  <header class="brand">
+    <div class="brand-inner">
+      <!-- If you have a logo, save as assets/connect66-logo.svg (or .png).
+           If not found, the img hides and the text mark shows. -->
+      <img class="logo" src="./assets/connect66-logo.svg" alt="Connect66" onerror="this.style.display='none'">
+      <div class="titles">
+        <h1>Connect66 Gateway Towers — Statewide Route 66 Infrastructure for the 2026 Centennial</h1>
+        <p class="tagline">44 on-route communities delivering public Wi-Fi, heritage storytelling, ribbon-cuttings, and measurable tourism impact.</p>
+        <div class="pills">
+          <span class="pill"><span id="siteCount">44</span> sites</span>
+          <span class="pill">statewide coverage</span>
+          <span class="pill">shovel-ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Map -->
   <div class="wrap">
-    <h1>Oklahoma Cities Map (Baked)</h1>
     <div id="map"></div>
   </div>
+
   <div class="status" id="status">Loading…</div>
 
   <script>
+    // Init map
     const map = L.map('map').setView([35.5, -97.5], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
     }).addTo(map);
 
     const statusEl = document.getElementById('status');
+    const siteCountEl = document.getElementById('siteCount');
 
+    // Load baked JSON and plot
     fetch('./assets/cities.baked.json')
       .then(r => { if (!r.ok) throw new Error('Could not load assets/cities.baked.json'); return r.json(); })
       .then(rows => {
@@ -41,6 +100,9 @@
           lat:   Number(row.lat ?? row.latitude),
           lon:   Number(row.lon ?? row.lng ?? row.longitude)
         })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+
+        // Update badge count
+        if (siteCountEl) siteCountEl.textContent = pts.length;
 
         statusEl.textContent = `Loaded ${pts.length} locations`;
         if (!pts.length) return;
