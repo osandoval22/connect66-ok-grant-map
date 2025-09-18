@@ -1,1 +1,266 @@
-[]
+[
+  {
+    "city": "Afton",
+    "state": "OK",
+    "lat": 36.6939077,
+    "lon": -94.9628672
+  },
+  {
+    "city": "Arcadia",
+    "state": "OK",
+    "lat": 35.6669093,
+    "lon": -97.326671
+  },
+  {
+    "city": "Bethany",
+    "state": "OK",
+    "lat": 35.5186728,
+    "lon": -97.6322648
+  },
+  {
+    "city": "Bridgeport",
+    "state": "OK",
+    "lat": 35.5461791,
+    "lon": -98.3845848
+  },
+  {
+    "city": "Bristow",
+    "state": "OK",
+    "lat": 35.8308944,
+    "lon": -96.3907747
+  },
+  {
+    "city": "Bushyhead",
+    "state": "OK",
+    "lat": 36.461746,
+    "lon": -95.4940803
+  },
+  {
+    "city": "Calumet",
+    "state": "OK",
+    "lat": 35.6008883,
+    "lon": -98.1188072
+  },
+  {
+    "city": "Canute",
+    "state": "OK",
+    "lat": 35.4219943,
+    "lon": -99.2795337
+  },
+  {
+    "city": "Catoosa",
+    "state": "OK",
+    "lat": 36.188987,
+    "lon": -95.745817
+  },
+  {
+    "city": "Chandler",
+    "state": "OK",
+    "lat": 35.7032002,
+    "lon": -96.880011
+  },
+  {
+    "city": "Chelsea",
+    "state": "OK",
+    "lat": 36.5355939,
+    "lon": -95.4324166
+  },
+  {
+    "city": "Claremore",
+    "state": "OK",
+    "lat": 36.3126005,
+    "lon": -95.6160686
+  },
+  {
+    "city": "Clinton",
+    "state": "OK",
+    "lat": 35.5156056,
+    "lon": -98.9673069
+  },
+  {
+    "city": "Commerce",
+    "state": "OK",
+    "lat": 36.9332857,
+    "lon": -94.8770392
+  },
+  {
+    "city": "Davenport",
+    "state": "OK",
+    "lat": 35.7047891,
+    "lon": -96.7652994
+  },
+  {
+    "city": "Depew",
+    "state": "OK",
+    "lat": 35.8028493,
+    "lon": -96.5061215
+  },
+  {
+    "city": "Edmond",
+    "state": "OK",
+    "lat": 35.6571367,
+    "lon": -97.4649038
+  },
+  {
+    "city": "El Reno",
+    "state": "OK",
+    "lat": 35.532198,
+    "lon": -97.9550578
+  },
+  {
+    "city": "Elk City",
+    "state": "OK",
+    "lat": 35.4140081,
+    "lon": -99.4138648
+  },
+  {
+    "city": "Erick",
+    "state": "OK",
+    "lat": 35.212709,
+    "lon": -99.8690567
+  },
+  {
+    "city": "Foss",
+    "state": "OK",
+    "lat": 35.4544942,
+    "lon": -99.1698099
+  },
+  {
+    "city": "Foyil",
+    "state": "OK",
+    "lat": 36.4348166,
+    "lon": -95.5194205
+  },
+  {
+    "city": "Geary",
+    "state": "OK",
+    "lat": 35.6302132,
+    "lon": -98.3184548
+  },
+  {
+    "city": "Hext",
+    "state": "OK",
+    "lat": 35.2475512,
+    "lon": -99.7528779
+  },
+  {
+    "city": "Hydro",
+    "state": "OK",
+    "lat": 35.548956,
+    "lon": -98.5777281
+  },
+  {
+    "city": "Kellyville",
+    "state": "OK",
+    "lat": 35.9436968,
+    "lon": -96.2136136
+  },
+  {
+    "city": "Luther",
+    "state": "OK",
+    "lat": 35.6596094,
+    "lon": -97.1941408
+  },
+  {
+    "city": "Miami",
+    "state": "OK",
+    "lat": 36.8746177,
+    "lon": -94.877374
+  },
+  {
+    "city": "Narcissa",
+    "state": "OK",
+    "lat": 36.801245,
+    "lon": -94.9290234
+  },
+  {
+    "city": "Oklahoma City",
+    "state": "OK",
+    "lat": 35.4729886,
+    "lon": -97.5170536
+  },
+  {
+    "city": "Quapaw",
+    "state": "OK",
+    "lat": 36.9545117,
+    "lon": -94.7880057
+  },
+  {
+    "city": "Sapulpa",
+    "state": "OK",
+    "lat": 36.0005035,
+    "lon": -96.1049612
+  },
+  {
+    "city": "Sayre",
+    "state": "OK",
+    "lat": 35.2979543,
+    "lon": -99.6399648
+  },
+  {
+    "city": "Sequoyah",
+    "state": "OK",
+    "lat": 35.5035863,
+    "lon": -94.7360577
+  },
+  {
+    "city": "Stroud",
+    "state": "OK",
+    "lat": 35.7477749,
+    "lon": -96.6566742
+  },
+  {
+    "city": "Texola",
+    "state": "OK",
+    "lat": 35.2192194,
+    "lon": -99.9912189
+  },
+  {
+    "city": "Tulsa",
+    "state": "OK",
+    "lat": 36.1563122,
+    "lon": -95.9927516
+  },
+  {
+    "city": "Verdigris",
+    "state": "OK",
+    "lat": 36.2348197,
+    "lon": -95.6910927
+  },
+  {
+    "city": "Vinita",
+    "state": "OK",
+    "lat": 36.6408372,
+    "lon": -95.156363
+  },
+  {
+    "city": "Warr Acres",
+    "state": "OK",
+    "lat": 35.5225569,
+    "lon": -97.6189353
+  },
+  {
+    "city": "Warwick",
+    "state": "OK",
+    "lat": 35.6858959,
+    "lon": -97.0041948
+  },
+  {
+    "city": "Weatherford",
+    "state": "OK",
+    "lat": 35.5261633,
+    "lon": -98.7075744
+  },
+  {
+    "city": "Wellston",
+    "state": "OK",
+    "lat": 35.6942278,
+    "lon": -97.063363
+  },
+  {
+    "city": "Yukon",
+    "state": "OK",
+    "lat": 35.5067259,
+    "lon": -97.7625386
+  }
+]
