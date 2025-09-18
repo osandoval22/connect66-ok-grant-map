@@ -37,30 +37,51 @@
   <h2>Oklahoma Cities Map</h2>
   <div id="map"></div>
 
-  <script>
-    // Initialize map
-    const map = L.map('map').setView([35.5, -97.5], 6); // Center on Oklahoma
+ <script>
+  // Init map
+  const map = L.map('map').setView([35.5, -97.5], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+  const statusEl = document.createElement('div');
+  statusEl.style.cssText = 'position:absolute;top:8px;right:8px;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:8px;font:12px system-ui;';
+  statusEl.textContent = 'Loading…';
+  document.body.appendChild(statusEl);
 
-    // Load pre-baked cities
-    fetch("assets/cities.baked.json")
-      .then(response => response.json())
-      .then(data => {
-        data.forEach(city => {
-          if (city.lat && city.lon) {
-            L.marker([city.lat, city.lon])
-              .addTo(map)
-              .bindPopup(`<strong>${city.name}</strong>`);
-          }
-        });
-      })
-      .catch(err => console.error("Error loading cities:", err));
-  </script>
-</body>
-</html>
+  fetch('assets/cities.baked.json')
+    .then(r => {
+      if (!r.ok) throw new Error('Could not load assets/cities.baked.json');
+      return r.json();
+    })
+    .then(rows => {
+      // Normalize possible field names: lat/lon vs lat/lng, city/name, etc.
+      const pts = rows.map(row => {
+        const lat = row.lat ?? row.latitude;
+        const lon = row.lon ?? row.lng ?? row.longitude;
+        const city = row.city ?? row.City ?? row.name ?? row.Name;
+        const state = row.state ?? row.State ?? '';
+        return { lat: Number(lat), lon: Number(lon), label: state ? `${city}, ${state}` : String(city || '') };
+      }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+
+      statusEl.textContent = `Loaded ${pts.length} locations`;
+      if (!pts.length) {
+        statusEl.textContent += ' — none had valid lat/lon. Open /assets/cities.baked.json to verify it has coords.';
+        return;
+      }
+
+      const bounds = [];
+      pts.forEach(p => {
+        L.marker([p.lat, p.lon]).addTo(map).bindPopup(`<strong>${p.label}</strong><br>Lat ${p.lat.toFixed(5)}, Lng ${p.lon.toFixed(5)}`);
+        bounds.push([p.lat, p.lon]);
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding: [30, 30] });
+    })
+    .catch(err => {
+      statusEl.textContent = `Error: ${err.message}`;
+      console.error(err);
+    });
+</script>
+
 
