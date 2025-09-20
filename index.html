@@ -1,9 +1,4 @@
-# Create a ready-to-upload index.html that reads your existing files:
-# ./assets/cities.baked.json and ./assets/population.json
-# It draws markers, optional population coloring, an optional route line,
-# and per-segment distance labels. All paths are relative for GitHub Pages.
-
-html = r"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -217,6 +212,3 @@ function renderLegend(breaks) {
 </script>
 </body>
 </html>
-"""
-open('/mnt/data/index.html', 'w', encoding='utf-8').write(html)
-print("Saved to /mnt/data/index.html")
