@@ -25,7 +25,6 @@
     .city-badge { display:inline-block; min-width:18px; height:18px; border-radius:50%; background:#ffd166; color:#000; text-align:center; font-weight:700; font-size:12px; line-height:18px; margin-right:6px;}
     .legend { position:absolute; left:12px; bottom:16px; background:#0f1b2a; color:#fff; padding:8px 10px; border-radius:8px; border:1px solid #233247; font-size:0.85rem; }
     .legend .swatch { display:inline-block; width:14px; height:14px; margin-right:6px; vertical-align:-2px; border-radius:3px; }
-    /* High-contrast permanent labels */
     .leaflet-tooltip.dist-label {
       background: rgba(0,0,0,0.72);
       color: #fff;
@@ -108,20 +107,23 @@ function quantizeScale(values){
     ]);
 
     let raw = (Array.isArray(cities) ? cities : (cities.locations || cities.cities || []));
-    raw = raw.map(r => ({
-      ...r,
-      name: r.name || r.city || r.town || '',
-      lat: Number(r.lat ?? r.latitude),
-      lng: Number(r.lng ?? r.lon ?? r.longitude),
-      population: toNum(r.population ?? (pops[r.name || r.city || ''])),
-    })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    raw = raw.map(r => {
+      const name = r.name || r.city || r.town || '';
+      const p = toNum(r.population ?? pops[name]);
+      const pop = Number.isFinite(p) && p > 0 ? p : NaN;
+      return {
+        ...r,
+        name,
+        lat: Number(r.lat ?? r.latitude),
+        lng: Number(r.lng ?? r.lon ?? r.longitude),
+        population: pop
+      };
+    }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
     if (!raw.length) throw new Error('No valid coordinates in cities.baked.json');
 
-    // Identify an order field if present
     const orderKeys = ['order','sequence','seq','index','idx','rank','position'];
     const hasOrderKey = orderKeys.find(k => raw.some(r => typeof r[k] !== 'undefined'));
-    // fallback order will be longitude West->East
     function sortBy(mode, arr){
       const a = arr.slice();
       if(mode==='dataset' && hasOrderKey){
@@ -134,7 +136,6 @@ function quantizeScale(values){
       return a;
     }
 
-    // Map
     const map=L.map('map');
     const bounds=L.latLngBounds(raw.map(p=>[p.lat,p.lng]));
     map.fitBounds(bounds.pad(0.15));
@@ -142,24 +143,9 @@ function quantizeScale(values){
 
     const scale=quantizeScale(raw.map(p=>p.population));
 
-    // Layers
     const markers=L.layerGroup().addTo(map);
     const segments=L.layerGroup().addTo(map);
     const labels=L.layerGroup().addTo(map);
-
-    // Legend
-    function renderLegend(){
-      const el=document.getElementById('legend');
-      const br=scale.breaks;
-      if(!br){ el.style.display='none'; return; }
-      el.innerHTML = '<div><strong>Population</strong></div>' +
-        `<div><span class="swatch" style="background:${COLORS[0]}"></span> ≤ ${br[0].toLocaleString()}</div>` +
-        `<div><span class="swatch" style="background:${COLORS[1]}"></span> ≤ ${br[1].toLocaleString()}</div>` +
-        `<div><span class="swatch" style="background:${COLORS[2]}"></span> ≤ ${br[2].toLocaleString()}</div>` +
-        `<div><span class="swatch" style="background:${COLORS[3]}"></span> ≤ ${br[3].toLocaleString()}</div>` +
-        `<div><span class="swatch" style="background:${COLORS[4]}"></span> higher</div>`;
-      el.style.display='block';
-    }
 
     function drawAll(){
       const orderMode=document.getElementById('orderSel').value;
@@ -170,20 +156,21 @@ function quantizeScale(values){
 
       markers.clearLayers(); segments.clearLayers(); labels.clearLayers();
 
-      // markers
       points.forEach((p,idx)=>{
         const color=colorByPop? scale(p.population): '#3fa3ff';
+        const popLabel = (Number.isFinite(p.population) && p.population > 0)
+          ? `Pop: ${p.population.toLocaleString()}`
+          : 'Pop: N/A';
         L.circleMarker([p.lat,p.lng],{radius:7, weight:1.6, color:'#0b1d31', fillColor:color, fillOpacity:0.95})
-          .bindTooltip(`${idx+1}. ${p.name}${Number.isFinite(p.population)&&p.population>0? `<br>Pop: ${p.population.toLocaleString()}`:''}`)
+          .bindTooltip(`${idx+1}. ${p.name}<br>${popLabel}`)
           .addTo(markers);
         const num=L.divIcon({className:'city-idx', html:`<div class="city-badge">${idx+1}</div>`, iconSize:[18,18]});
         L.marker([p.lat,p.lng],{icon:num, interactive:false}).addTo(markers);
       });
 
-      // sequential segments only
       for(let i=1;i<points.length;i++){
         const a=points[i-1], b=points[i];
-        const seg = L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#ffd166', weight:3}).addTo(segments);
+        L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#ffd166', weight:3}).addTo(segments);
         if(showLabels){
           const mi = haversine(a.lat,a.lng,b.lat,b.lng)*0.621371;
           L.tooltip({permanent:true, direction:'top', className:'dist-label', offset:[0,-6]})
@@ -193,27 +180,35 @@ function quantizeScale(values){
         }
       }
 
-      // list
       const list=document.getElementById('list');
       let html='<ol>', total=0;
       for(let i=1;i<points.length;i++){
         const a=points[i-1], b=points[i];
         const mi=haversine(a.lat,a.lng,b.lat,b.lng)*0.621371; total+=mi;
-        const ap = Number.isFinite(a.population) && a.population>0 ? a.population.toLocaleString() : 'N/A';
-        const bp = Number.isFinite(b.population) && b.population>0 ? b.population.toLocaleString() : 'N/A';
+        const ap = (Number.isFinite(a.population) && a.population>0) ? a.population.toLocaleString() : 'N/A';
+        const bp = (Number.isFinite(b.population) && b.population>0) ? b.population.toLocaleString() : 'N/A';
         html += `<li><strong>${i}→${i+1}</strong> ${a.name} <span class="small">(pop: ${ap})</span> → ${b.name} <span class="small">(pop: ${bp})</span> <span class="small">(${mi.toFixed(1)} mi)</span></li>`;
       }
       html+='</ol>';
       html+=`<div class="total">Total (series): ${total.toFixed(1)} mi</div>`;
       list.innerHTML=html;
 
-      renderLegend();
+      const el=document.getElementById('legend');
+      const br=scale.breaks;
+      if(br){
+        el.innerHTML = '<div><strong>Population</strong></div>' +
+          `<div><span class="swatch" style="background:#fee5d9"></span> ≤ ${br[0].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#fcae91"></span> ≤ ${br[1].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#fb6a4a"></span> ≤ ${br[2].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#de2d26"></span> ≤ ${br[3].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#a50f15"></span> higher</div>`;
+        el.style.display='block';
+      } else {
+        el.style.display='none';
+      }
     }
 
-    // initial
     drawAll();
-
-    // controls
     document.getElementById('chkColor').addEventListener('change', drawAll);
     document.getElementById('chkLabels').addEventListener('change', drawAll);
     document.getElementById('orderSel').addEventListener('change', drawAll);
