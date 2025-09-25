@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Connect66 — Oklahoma Sequential Distances + Population</title>
+  <title>Connect66 — OK Sequential Distances + Population</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -22,20 +22,18 @@
     ol li { margin:6px 0; line-height: 1.25; }
     .small { color:var(--muted); font-size:0.9rem; }
     .total { margin-top:10px; font-weight:600; }
-    /* HIGH-CONTRAST number badges */
-    .city-badge {
-      display:inline-block; min-width:22px; height:22px; line-height:22px;
-      border-radius:50%; background:#222; color:#fff;
-      border:2px solid #ffd166; font-weight:700; font-size:13px; text-align:center;
-      box-shadow:0 0 4px rgba(0,0,0,.6);
-    }
-    .city-idx { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+    .city-badge { display:inline-block; min-width:18px; height:18px; border-radius:50%; background:#ffd166; color:#000; text-align:center; font-weight:700; font-size:12px; line-height:18px; margin-right:6px;}
     .legend { position:absolute; left:12px; bottom:16px; background:#0f1b2a; color:#fff; padding:8px 10px; border-radius:8px; border:1px solid #233247; font-size:0.85rem; }
     .legend .swatch { display:inline-block; width:14px; height:14px; margin-right:6px; vertical-align:-2px; border-radius:3px; }
     .leaflet-tooltip.dist-label {
-      background: rgba(0,0,0,0.72); color:#fff; border:1px solid rgba(255,255,255,0.25);
-      border-radius:6px; padding:2px 6px; box-shadow:0 2px 8px rgba(0,0,0,0.35);
-      font-weight:600; font-size:12px;
+      background: rgba(0,0,0,0.72);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      padding: 2px 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      font-weight: 600;
+      font-size: 12px;
     }
   </style>
 </head>
@@ -67,176 +65,158 @@
   </aside>
 
 <script>
-/* ---------- Utilities ---------- */
 const rel = p => new URL(p, window.location.href).toString();
-const toNum = v => Number(String(v ?? '').replace(/,/g,'').trim());
-const haversineMi = (aLat,aLng,bLat,bLng) => {
-  const R=3958.8, toRad=d=>d*Math.PI/180;
-  const dLat=toRad(bLat-aLat), dLng=toRad(bLng-aLng);
-  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
-};
-const midpoint = (a,b) => [(a[0]+b[0])/2,(a[1]+b[1])/2];
-const normName = s => String(s||'').toLowerCase()
-  .replace(/[.,()-]/g,' ').replace(/\boklahoma\b|\bok\b|\bcity\b|\btown\b|\bvillage\b/g,'')
-  .replace(/\s+/g,' ').trim();
 
-async function loadJSON(url){ const r=await fetch(url); if(!r.ok) throw new Error('Failed to load '+url+' ('+r.status+')'); return r.json(); }
-
-/* Robust population loader (handles array or object formats) */
-async function loadPopIndex(){
-  const raw = await loadJSON(rel('./assets/population.json')).catch(()=> ({}));
-  const idx = {};
-  if (Array.isArray(raw)){
-    for (const r of raw){
-      const name = r.name || r.city || r.place || r.town || r.label;
-      const val = toNum(r.population ?? r.pop ?? r.pop2020 ?? r.estimate ?? r.count);
-      if (name && Number.isFinite(val) && val>0) idx[normName(name)] = val;
-    }
-  } else {
-    for (const [k,v] of Object.entries(raw)){
-      const val = toNum((v && (v.population ?? v.pop ?? v.pop2020 ?? v.estimate ?? v.count)) ?? raw[k]);
-      if (Number.isFinite(val) && val>0) idx[normName(k)] = val;
-    }
-  }
-  return idx;
+async function loadJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Failed to load ' + url + ' (' + r.status + ')');
+  return r.json();
 }
+function toNum(v){ return Number(String(v ?? '').replace(/,/g,'').trim()); }
+function haversine(lat1, lon1, lat2, lon2) {
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); // km
+}
+function midpoint(a,b){ return [(a[0]+b[0])/2,(a[1]+b[1])/2]; }
 
-/* color scale (simple quantiles) */
+// color scale
 const COLORS=['#fee5d9','#fcae91','#fb6a4a','#de2d26','#a50f15'];
 function quantizeScale(values){
-  const v=values.filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
+  const v=values.slice().filter(n=>Number.isFinite(n)&&n>0).sort((a,b)=>a-b);
   if(!v.length) return Object.assign(()=> '#3fa3ff',{breaks:null});
-  const pick=q=>v[Math.floor(q*(v.length-1))];
-  const bins=[pick(0.2),pick(0.4),pick(0.6),pick(0.8)];
-  const f=x=>{
-    if(!Number.isFinite(x)||x<=0) return '#666';
+  const bins=[0.2,0.4,0.6,0.8].map(q=>v[Math.floor(q*(v.length-1))]);
+  const fn=(x)=>{
+    if(!Number.isFinite(x)||x<=0) return '#9aa7b4';
     if(x<=bins[0])return COLORS[0];
     if(x<=bins[1])return COLORS[1];
     if(x<=bins[2])return COLORS[2];
     if(x<=bins[3])return COLORS[3];
     return COLORS[4];
   };
-  return Object.assign(f,{breaks:bins});
+  return Object.assign(fn,{breaks:bins});
 }
 
-/* ---------- Main ---------- */
-(async ()=>{
-  const status = document.getElementById('status');
-  try{
-    const [cities, popIndex] = await Promise.all([
+(async () => {
+  const status=document.getElementById('status');
+  try {
+    const [cities, pops] = await Promise.all([
       loadJSON(rel('./assets/cities.baked.json')).catch(()=>loadJSON(rel('./cities.baked.json'))),
-      loadPopIndex()
+      loadJSON(rel('./assets/population.json')).catch(()=> ({}))
     ]);
 
     let raw = (Array.isArray(cities) ? cities : (cities.locations || cities.cities || []));
-    raw = raw.map(r=>{
+    raw = raw.map(r => {
       const name = r.name || r.city || r.town || '';
-      const pop  = popIndex[normName(name)];
+      const p = toNum(r.population ?? pops[name]);
+      const pop = Number.isFinite(p) && p > 0 ? p : NaN;
       return {
         ...r,
         name,
         lat: Number(r.lat ?? r.latitude),
         lng: Number(r.lng ?? r.lon ?? r.longitude),
-        population: (Number.isFinite(pop) && pop>0) ? pop : NaN
+        population: pop
       };
-    }).filter(p=>Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
-    if(!raw.length) throw new Error('No valid coordinates in assets/cities.baked.json');
-
-    /* Map + layers */
-    const map = L.map('map');
-    const bounds = L.latLngBounds(raw.map(p=>[p.lat,p.lng]));
-    map.fitBounds(bounds.pad(0.15));
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-
-    const markers = L.layerGroup().addTo(map);
-    const lines   = L.layerGroup().addTo(map);
-    const labels  = L.layerGroup().addTo(map);
-
-    const scale = quantizeScale(raw.map(p=>p.population));
-
-    const orderSel = document.getElementById('orderSel');
-    const chkColor = document.getElementById('chkColor');
-    const chkLbl   = document.getElementById('chkLabels');
+    if (!raw.length) throw new Error('No valid coordinates in cities.baked.json');
 
     const orderKeys = ['order','sequence','seq','index','idx','rank','position'];
     const hasOrderKey = orderKeys.find(k => raw.some(r => typeof r[k] !== 'undefined'));
-
-    function sortPoints(mode){
-      const a = raw.slice();
-      if(mode==='dataset' && hasOrderKey) a.sort((x,y)=>(Number(x[hasOrderKey])||0)-(Number(y[hasOrderKey])||0));
-      else if(mode==='east_west') a.sort((x,y)=>y.lng-x.lng);
-      else a.sort((x,y)=>x.lng-y.lng);
+    function sortBy(mode, arr){
+      const a = arr.slice();
+      if(mode==='dataset' && hasOrderKey){
+        a.sort((x,y) => (Number(x[hasOrderKey])||0) - (Number(y[hasOrderKey])||0));
+      } else if(mode==='east_west'){
+        a.sort((x,y) => y.lng - x.lng);
+      } else {
+        a.sort((x,y) => x.lng - y.lng);
+      }
       return a;
     }
 
-    function redraw(){
-      markers.clearLayers(); lines.clearLayers(); labels.clearLayers();
+    const map=L.map('map');
+    const bounds=L.latLngBounds(raw.map(p=>[p.lat,p.lng]));
+    map.fitBounds(bounds.pad(0.15));
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 
-      const pts = sortPoints(orderSel.value);
-      let total = 0;
-      let html  = '<ol>';
+    const scale=quantizeScale(raw.map(p=>p.population));
 
-      pts.forEach((p,idx)=>{
-        /* Number badge — keep ABOVE everything */
-        const numIcon = L.divIcon({
-          className:'city-idx',
-          html:`<div class="city-badge">${idx+1}</div>`,
-          iconSize:[24,24],
-          iconAnchor:[12,12]
-        });
-        L.marker([p.lat,p.lng],{
-          icon:numIcon, interactive:false, pane:'markerPane', zIndexOffset:1000, opacity:1
-        }).addTo(markers);
+    const markers=L.layerGroup().addTo(map);
+    const segments=L.layerGroup().addTo(map);
+    const labels=L.layerGroup().addTo(map);
 
-        /* Colored dot (population or default) */
-        const fill = chkColor.checked ? scale(p.population) : '#3399ff';
-        L.circleMarker([p.lat,p.lng],{radius:6,weight:1,color:'#0b1d31',fillColor:fill,fillOpacity:0.95})
-          .bindTooltip(`${idx+1}. ${p.name}<br>Pop: ${Number.isFinite(p.population)?p.population.toLocaleString():'N/A'}`)
+    function drawAll(){
+      const orderMode=document.getElementById('orderSel').value;
+      const colorByPop=document.getElementById('chkColor').checked;
+      const showLabels=document.getElementById('chkLabels').checked;
+
+      const points = sortBy(orderMode, raw);
+
+      markers.clearLayers(); segments.clearLayers(); labels.clearLayers();
+
+      points.forEach((p,idx)=>{
+        const color=colorByPop? scale(p.population): '#3fa3ff';
+        const popLabel = (Number.isFinite(p.population) && p.population > 0)
+          ? `Pop: ${p.population.toLocaleString()}`
+          : 'Pop: N/A';
+        L.circleMarker([p.lat,p.lng],{radius:7, weight:1.6, color:'#0b1d31', fillColor:color, fillOpacity:0.95})
+          .bindTooltip(`${idx+1}. ${p.name}<br>${popLabel}`)
           .addTo(markers);
-
-        if(idx<pts.length-1){
-          const q = pts[idx+1];
-          const d = haversineMi(p.lat,p.lng,q.lat,q.lng);
-          total += d;
-          L.polyline([[p.lat,p.lng],[q.lat,q.lng]],{color:'#ffd166',weight:3}).addTo(lines);
-          if(chkLbl.checked){
-            L.tooltip({permanent:true,direction:'top',className:'dist-label',offset:[0,-6]})
-              .setLatLng(midpoint([p.lat,p.lng],[q.lat,q.lng]))
-              .setContent(`${idx+1}→${idx+2}: ${d.toFixed(1)} mi`)
-              .addTo(labels);
-          }
-          html += `<li><strong>${idx+1}→${idx+2}</strong> ${p.name} <span class="small">(pop: ${Number.isFinite(p.population)?p.population.toLocaleString():'N/A'})</span> → ${q.name} <span class="small">(pop: ${Number.isFinite(q.population)?q.population.toLocaleString():'N/A'})</span> <span class="small">(${d.toFixed(1)} mi)</span></li>`;
-        }
+        const num=L.divIcon({className:'city-idx', html:`<div class="city-badge">${idx+1}</div>`, iconSize:[18,18]});
+        L.marker([p.lat,p.lng],{icon:num, interactive:false}).addTo(markers);
       });
 
-      html += '</ol><div class="total">Total (series): '+total.toFixed(1)+' mi</div>';
-      document.getElementById('list').innerHTML = html;
+      for(let i=1;i<points.length;i++){
+        const a=points[i-1], b=points[i];
+        L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#ffd166', weight:3}).addTo(segments);
+        if(showLabels){
+          const mi = haversine(a.lat,a.lng,b.lat,b.lng)*0.621371;
+          L.tooltip({permanent:true, direction:'top', className:'dist-label', offset:[0,-6]})
+            .setLatLng(midpoint([a.lat,a.lng],[b.lat,b.lng]))
+            .setContent(`${i}→${i+1}: ${mi.toFixed(1)} mi`)
+            .addTo(labels);
+        }
+      }
 
-      /* Legend */
+      const list=document.getElementById('list');
+      let html='<ol>', total=0;
+      for(let i=1;i<points.length;i++){
+        const a=points[i-1], b=points[i];
+        const mi=haversine(a.lat,a.lng,b.lat,b.lng)*0.621371; total+=mi;
+        const ap = (Number.isFinite(a.population) && a.population>0) ? a.population.toLocaleString() : 'N/A';
+        const bp = (Number.isFinite(b.population) && b.population>0) ? b.population.toLocaleString() : 'N/A';
+        html += `<li><strong>${i}→${i+1}</strong> ${a.name} <span class="small">(pop: ${ap})</span> → ${b.name} <span class="small">(pop: ${bp})</span> <span class="small">(${mi.toFixed(1)} mi)</span></li>`;
+      }
+      html+='</ol>';
+      html+=`<div class="total">Total (series): ${total.toFixed(1)} mi</div>`;
+      list.innerHTML=html;
+
       const el=document.getElementById('legend');
-      if(scale.breaks){
-        const b=scale.breaks;
-        el.innerHTML = '<div><strong>Population</strong></div>'
-          + `<div><span class="swatch" style="background:#fee5d9"></span> ≤ ${b[0].toLocaleString()}</div>`
-          + `<div><span class="swatch" style="background:#fcae91"></span> ≤ ${b[1].toLocaleString()}</div>`
-          + `<div><span class="swatch" style="background:#fb6a4a"></span> ≤ ${b[2].toLocaleString()}</div>`
-          + `<div><span class="swatch" style="background:#de2d26"></span> ≤ ${b[3].toLocaleString()}</div>`
-          + `<div><span class="swatch" style="background:#a50f15"></span> higher</div>`;
+      const br=scale.breaks;
+      if(br){
+        el.innerHTML = '<div><strong>Population</strong></div>' +
+          `<div><span class="swatch" style="background:#fee5d9"></span> ≤ ${br[0].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#fcae91"></span> ≤ ${br[1].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#fb6a4a"></span> ≤ ${br[2].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#de2d26"></span> ≤ ${br[3].toLocaleString()}</div>` +
+          `<div><span class="swatch" style="background:#a50f15"></span> higher</div>`;
         el.style.display='block';
-      } else el.style.display='none';
+      } else {
+        el.style.display='none';
+      }
     }
 
-    redraw();
-    orderSel.addEventListener('change', redraw);
-    chkColor.addEventListener('change', redraw);
-    chkLbl.addEventListener('change', redraw);
+    drawAll();
+    document.getElementById('chkColor').addEventListener('change', drawAll);
+    document.getElementById('chkLabels').addEventListener('change', drawAll);
+    document.getElementById('orderSel').addEventListener('change', drawAll);
 
-    status.textContent = '';
-  }catch(e){
+    status.textContent='';
+  } catch (e) {
     console.error(e);
-    document.getElementById('status').textContent = 'Error: ' + e.message;
+    document.getElementById('status').textContent='Error: '+e.message;
   }
 })();
 </script>
