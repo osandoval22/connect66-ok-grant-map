@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Connect66 — OK Sequential Distances + Population</title>
+  <title>Connect66 — Oklahoma Sequential Distances + Population</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -22,32 +22,20 @@
     ol li { margin:6px 0; line-height: 1.25; }
     .small { color:var(--muted); font-size:0.9rem; }
     .total { margin-top:10px; font-weight:600; }
+    /* HIGH-CONTRAST number badges */
     .city-badge {
-      display: inline-block;
-      min-width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #222;             /* dark background */
-      color: #fff;                  /* white text */
-      border: 2px solid #ffd166;    /* yellow border */
-      text-align: center;
-      font-weight: 700;
-      font-size: 13px;
-      line-height: 22px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.6);
+      display:inline-block; min-width:22px; height:22px; line-height:22px;
+      border-radius:50%; background:#222; color:#fff;
+      border:2px solid #ffd166; font-weight:700; font-size:13px; text-align:center;
+      box-shadow:0 0 4px rgba(0,0,0,.6);
     }
     .city-idx { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
     .legend { position:absolute; left:12px; bottom:16px; background:#0f1b2a; color:#fff; padding:8px 10px; border-radius:8px; border:1px solid #233247; font-size:0.85rem; }
     .legend .swatch { display:inline-block; width:14px; height:14px; margin-right:6px; vertical-align:-2px; border-radius:3px; }
     .leaflet-tooltip.dist-label {
-      background: rgba(0,0,0,0.72);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 6px;
-      padding: 2px 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-      font-weight: 600;
-      font-size: 12px;
+      background: rgba(0,0,0,0.72); color:#fff; border:1px solid rgba(255,255,255,0.25);
+      border-radius:6px; padding:2px 6px; box-shadow:0 2px 8px rgba(0,0,0,0.35);
+      font-weight:600; font-size:12px;
     }
   </style>
 </head>
@@ -79,44 +67,11 @@
   </aside>
 
 <script>
-function haversine(lat1,lng1,lat2,lng2){
-  const toRad=x=>x*Math.PI/180;
-  const R=3958.8;
-  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-function toNum(x){ return (x==null?NaN:Number(String(x).replace(/,/g,''))); }
-function rel(p){ return p; }
-function normName(s){
-  return String(s||'').toLowerCase()
-    .replace(/[.,()-]/g,' ')
-    .replace(/\boklahoma\b|\bok\b|\bcity\b|\btown\b|\bvillage\b/g,'')
-    .replace(/\s+/g,' ')
-    .trim();
-}
-async function loadJSON(u){ const r=await fetch(u); if(!r.ok) throw new Error('fail '+u); return r.json(); }
-async function loadPopIndex(){
-  const raw=await loadJSON(rel('./assets/population.json')).catch(()=> ({}));
-  const idx={};
-  if(Array.isArray(raw)){
-    for(const r of raw){
-      const name=r.name||r.city||r.place||r.town||r.label;
-      const val=toNum(r.population??r.pop??r.pop2020??r.estimate??r.count);
-      if(name && Number.isFinite(val)&&val>0) idx[normName(name)]=val;
-    }
-  } else {
-    for(const [k,v] of Object.entries(raw)){
-      const val=toNum((v&&(v.population??v.pop??v.pop2020??v.estimate??v.count)) ?? raw[k]);
-      if(Number.isFinite(val)&&val>0) idx[normName(k)]=val;
-    }
-  }
-  return idx;
-}
-
-(async()=>{
-  try{
-    const [cities,popIndex]=await Promise.all([
-      loadJSON(rel('./assets/cities.baked.json')).catch(()=>loadJSON(rel('./cities.baked.json'))),
-      loadPopIndex()
-    ]);
+/* ---------- Utilities ---------- */
+const rel = p => new URL(p, window.location.href).toString();
+const toNum = v => Number(String(v ?? '').replace(/,/g,'').trim());
+const haversineMi = (aLat,aLng,bLat,bLng) => {
+  const R=3958.8, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(bLat-aLat), dLng=toRad(bLng-aLng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
